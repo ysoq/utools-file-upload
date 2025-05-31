@@ -126,9 +126,9 @@
 
         // 新增打开文件夹函数
         function openFolder(path) {
-            // 统一转换为Windows路径格式
-            const safePath = path.replace(/\//g, '\\');
-            console.log('openFolder', safePath, path);
+            // 添加路径解码和格式处理
+            const decodedPath = decodeURIComponent(path);
+            const safePath = decodedPath.replace(/\//g, '\\');
             window.ysok.openFolder(safePath);
         }
 
@@ -154,7 +154,7 @@
                                     <div class="progress" style="width: ${(task.uploadedChunks / task.totalChunks * 100).toFixed(1)}%"></div>
                                 </div>
                                 ${task.status === 'completed' ? 
-                                `<button onclick="openFolder('${task.filePath}')">打开文件夹</button>` : ''}
+                                `<button onclick='openFolder(${JSON.stringify(task.filePath)})'>打开文件夹</button>` : ''}
                             </div>
                         `).join('');
                     });

@@ -137,6 +137,13 @@
             const result = await response.json();
             document.getElementById('status').textContent = 
                 `上传完成！保存路径：${result.path}`;
+
+            // 新增状态重置逻辑
+            document.getElementById('fileInfo').style.display = 'none';
+            document.getElementById('uploadBtn').style.display = 'none';
+            document.getElementById('progress-bar').style.width = '0%';
+            document.getElementById('fileInput').value = ''; // 清空文件选择
+            currentFile = null; // 重置当前文件
         }
     </script>
 </body>
