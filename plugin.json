@@ -1,0 +1,12 @@
+{
+  "main": "index.html",
+  "preload": "preload.js",
+  "logo": "logo.png",
+  "features": [
+    {
+      "code": "file-transfer",
+      "explain": "文件传输服务",
+      "cmds": ["文件传输", "send files"]
+    }
+  ]
+}

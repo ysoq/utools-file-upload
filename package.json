@@ -1,0 +1,20 @@
+{
+  "name": "文件传输",
+  "version": "1.0.0",
+  "description": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.7.0",
+  "dependencies": {
+    "child_process": "^1.0.2",
+    "express": "^5.1.0",
+    "ip": "^2.0.1",
+    "qrcode": "^1.5.4"
+  }
+}

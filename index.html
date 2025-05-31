@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        .container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        input, button {
+            padding: 8px 12px;
+            margin: 0 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="input-group">
+            <input type="text" id="ip" placeholder="IP地址" value="localhost">
+            <input type="number" id="port" placeholder="端口号" value="7738">
+            <button onclick="startServer()">启动服务</button>
+        </div>
+        <div id="qrcode"></div>
+    </div>
+    <script>
+        let retryCount = 0;
+        
+        function startServer() {
+            const ip = document.getElementById('ip').value;
+            const port = document.getElementById('port').value;
+            window.ysok.server(ip, port);
+            
+            // 清空二维码并开始检测
+            document.getElementById('qrcode').innerHTML = '';
+            retryCount = 0;
+            checkServiceReady(ip, port);
+        }
+
+        function checkServiceReady(ip = 'localhost', port = 7738) {
+            fetch(`http://${ip}:${port}/qrcode`)
+                .then(response => {
+                    if (!response.ok) throw new Error('服务未就绪');
+                    return response.text();
+                })
+                .then(qrcontent => {
+                    document.getElementById('qrcode').innerHTML = qrcontent;
+                })
+                .catch(() => {
+                    if (retryCount++ < 5) {
+                        setTimeout(checkServiceReady, 500);
+                    }
+                });
+        }
+        
+    </script>
+</body>
+</html>
