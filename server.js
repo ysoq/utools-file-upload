@@ -69,8 +69,8 @@ module.exports = function start(ip, port) {
     app.post('/merge', async (req, res) => {
         const { file, total, timestamp } = req.body;
         const saveDir = path.join(UPLOAD_DIR, timestamp);
-        const safeFileName = file.replace(/[^a-z0-9.]/gi, '_');
-        const outputPath = path.join(saveDir, safeFileName);
+        // 移除安全文件名处理，直接使用原始文件名
+        const outputPath = path.join(saveDir, file); 
     
         try {
             // 改用异步流式写入
@@ -84,11 +84,13 @@ module.exports = function start(ip, port) {
             writer.end();
     
             // 更新任务状态为已完成
+            // 更新任务状态时需要保持文件名一致性
             const taskKey = `${timestamp}_${file}`;
             const task = uploadTasks.get(taskKey);
             if (task) {
                 task.status = 'completed';
-                task.filePath = outputPath; // 添加文件路径记录
+                task.filePath = outputPath;
+                task.fileName = file; // 确保任务记录中的文件名是原始名称
             }
     
             res.json({ status: 'success', path: outputPath });

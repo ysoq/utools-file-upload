@@ -105,6 +105,7 @@
             
             // 所有分片上传完成后合并
             await mergeFile(currentFile.name, totalChunks, timestamp);
+            document.getElementById('progress-bar').style.width = `${100}%`;
             document.getElementById('uploadBtn').disabled = false;
         }
 
