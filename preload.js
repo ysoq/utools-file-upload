@@ -20,4 +20,7 @@ window.ysok = {
         return "ysok";
     },
     server,
+    openFolder: (path) => {
+        require('child_process').exec(`start "" "${path}"`);
+    }
 }

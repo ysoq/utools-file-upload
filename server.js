@@ -25,9 +25,28 @@ module.exports = function start(ip, port) {
     });
 
     // 修改分片上传接口
+    // 新增上传任务存储对象
+    const uploadTasks = new Map();
+    
+    // 在分片上传接口中添加任务记录
     app.post('/upload', (req, res) => {
-        const { file, chunk, index, total, timestamp } = req.body; // 新增timestamp参数
+        const { file, chunk, index, total, timestamp } = req.body;
         console.log('文件开始上传', chunk, index, total, timestamp)
+        
+        // 更新任务状态
+        const taskKey = `${timestamp}_${file}`;
+        if (!uploadTasks.has(taskKey)) {
+            uploadTasks.set(taskKey, {
+                fileName: file,
+                totalChunks: total,
+                uploadedChunks: 0,
+                startTime: Date.now(),
+                status: 'uploading'
+            });
+        }
+        const task = uploadTasks.get(taskKey);
+        task.uploadedChunks = Math.max(task.uploadedChunks, index + 1);
+        
         const saveDir = path.join(UPLOAD_DIR, timestamp);
         
         // 创建目录时添加存在性检查
@@ -67,6 +86,11 @@ module.exports = function start(ip, port) {
         } catch (err) {
             res.status(500).json({ error: '文件合并失败' });
         }
+    });
+
+    // 新增任务查询接口
+    app.get('/tasks', (req, res) => {
+        res.json(Array.from(uploadTasks.values()));
     });
   
     app.listen(port, () => {
