@@ -33,6 +33,8 @@ module.exports = function start(ip, port) {
         const { file, chunk, index, total, timestamp } = req.body;
         console.log('文件开始上传', chunk, index, total, timestamp)
         
+        const saveDir = path.join(UPLOAD_DIR, timestamp);
+
         // 更新任务状态
         const taskKey = `${timestamp}_${file}`;
         if (!uploadTasks.has(taskKey)) {
@@ -41,13 +43,13 @@ module.exports = function start(ip, port) {
                 totalChunks: total,
                 uploadedChunks: 0,
                 startTime: Date.now(),
-                status: 'uploading'
+                status: 'uploading',
+                filePath: saveDir
             });
         }
         const task = uploadTasks.get(taskKey);
         task.uploadedChunks = Math.max(task.uploadedChunks, index + 1);
         
-        const saveDir = path.join(UPLOAD_DIR, timestamp);
         
         // 创建目录时添加存在性检查
         if (!fs.existsSync(saveDir)) {
@@ -98,8 +100,8 @@ module.exports = function start(ip, port) {
             const task = uploadTasks.get(taskKey);
             if (task) {
                 task.status = 'completed';
-                task.filePath = outputPath;
-                task.fileName = file; // 确保任务记录中的文件名是原始名称
+                task.filePath = saveDir; // 改为保存文件夹路径而不是文件路径
+                task.fileName = file;
             }
     
             res.json({ status: 'success', path: outputPath });

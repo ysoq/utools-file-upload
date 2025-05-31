@@ -91,7 +91,7 @@
                         container.innerHTML = tasks.map(task => `
                             <div class="task-item">
                                 <div>${task.fileName}</div>
-                                <div>${task.filePath}</div>
+                                <div>保存目录：${task.filePath || ''}</div>
                                 <div>进度：${task.uploadedChunks}/${task.totalChunks}</div>
                                 <div class="progress-bar">
                                     <div class="progress" style="width: ${(task.uploadedChunks / task.totalChunks * 100).toFixed(1)}%"></div>
@@ -126,9 +126,40 @@
 
         // 新增打开文件夹函数
         function openFolder(path) {
-            window.ysok.openFolder(path); // 需要preload.js支持
+            // 统一转换为Windows路径格式
+            const safePath = path.replace(/\//g, '\\');
+            console.log('openFolder', safePath, path);
+            window.ysok.openFolder(safePath);
         }
 
+        // 在任务列表展示中修改路径显示
+        function checkTaskList() {
+            const port = document.getElementById('port').value;
+            console.log('1 checkTaskList')
+            // 新增定时刷新任务列表
+            setInterval(() => {
+                fetch(`http://127.0.0.1:${port}/tasks`)
+                    .then(res => res.json())
+                    .then(tasks => {
+                        console.log('2 checkTaskList', tasks)
+
+
+                        const container = document.getElementById('taskList');
+                        container.innerHTML = tasks.map(task => `
+                            <div class="task-item">
+                                <div>${task.fileName}</div>
+                                <div>保存目录：${task.filePath || ''}</div>
+                                <div>进度：${task.uploadedChunks}/${task.totalChunks}</div>
+                                <div class="progress-bar">
+                                    <div class="progress" style="width: ${(task.uploadedChunks / task.totalChunks * 100).toFixed(1)}%"></div>
+                                </div>
+                                ${task.status === 'completed' ? 
+                                `<button onclick="openFolder('${task.filePath}')">打开文件夹</button>` : ''}
+                            </div>
+                        `).join('');
+                    });
+            }, 1000);
+        }
     </script>
 </body>
 
