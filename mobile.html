@@ -68,16 +68,15 @@
         async function startUpload() {
             const totalChunks = Math.ceil(currentFile.size / CHUNK_SIZE);
             const timestamp = new Date().toLocaleString().replace(/[:./ ]/g, '-');
+            let uploadedCount = 0; // 新增上传完成计数器
             
             document.getElementById('uploadBtn').disabled = true;
             
-            // 分片上传逻辑（新增Promise数组）
             const uploadPromises = [];
             for (let i = 0; i < totalChunks; i++) {
                 const chunk = currentFile.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
                 const reader = new FileReader();
                 
-                // 将每个分片上传包装成Promise
                 const promise = new Promise((resolve) => {
                     reader.onload = async (e) => {
                         const base64Chunk = e.target.result.split(',')[1];
@@ -89,8 +88,9 @@
                             timestamp: timestamp
                         });
                         
-                        // 更新进度
-                        const progress = ((i + 1) / totalChunks * 100).toFixed(1);
+                        // 更新进度逻辑改为计数器方式
+                        uploadedCount++;
+                        const progress = (uploadedCount / totalChunks * 100).toFixed(1);
                         document.getElementById('progress-bar').style.width = `${progress}%`;
                         resolve();
                     };
@@ -100,10 +100,7 @@
                 uploadPromises.push(promise);
             }
 
-            // 等待所有分片上传完成（新增await）
             await Promise.all(uploadPromises);
-            
-            // 所有分片上传完成后合并
             await mergeFile(currentFile.name, totalChunks, timestamp);
             document.getElementById('progress-bar').style.width = `${100}%`;
             document.getElementById('uploadBtn').disabled = false;
