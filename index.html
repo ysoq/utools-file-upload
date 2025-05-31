@@ -91,6 +91,7 @@
                         container.innerHTML = tasks.map(task => `
                             <div class="task-item">
                                 <div>${task.fileName}</div>
+                                <div>${task.filePath}</div>
                                 <div>进度：${task.uploadedChunks}/${task.totalChunks}</div>
                                 <div class="progress-bar">
                                     <div class="progress" style="width: ${(task.uploadedChunks / task.totalChunks * 100).toFixed(1)}%"></div>

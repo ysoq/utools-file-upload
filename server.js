@@ -69,18 +69,27 @@ module.exports = function start(ip, port) {
     app.post('/merge', async (req, res) => {
         const { file, total, timestamp } = req.body;
         const saveDir = path.join(UPLOAD_DIR, timestamp);
-        // 移除安全文件名处理，直接使用原始文件名
-        const outputPath = path.join(saveDir, file); 
+        const outputPath = path.join(saveDir, file);
+        
+        // 新增安全文件名定义（与上传接口保持一致）
+        const safeFileName = file.replace(/[^a-z0-9.]/gi, '_');
     
         try {
-            // 改用异步流式写入
             const writer = fs.createWriteStream(outputPath);
+            
+            // 改用管道方式写入并添加错误处理
             for (let i = 0; i < total; i++) {
                 const chunkPath = path.join(saveDir, `${safeFileName}-${i}`);
-                const data = await fs.promises.readFile(chunkPath);
-                writer.write(data);
-                await fs.promises.unlink(chunkPath);
+                const reader = fs.createReadStream(chunkPath);
+                await new Promise((resolve, reject) => {
+                    reader.pipe(writer, { end: false });
+                    reader.on('end', () => {
+                        fs.unlink(chunkPath, () => resolve());
+                    });
+                    reader.on('error', reject);
+                });
             }
+            
             writer.end();
     
             // 更新任务状态为已完成
