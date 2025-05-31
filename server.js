@@ -67,11 +67,11 @@ module.exports = function start(ip, port) {
 
     // 修改合并接口
     app.post('/merge', async (req, res) => {
-        const { file, total, timestamp } = req.body; // 新增timestamp参数
+        const { file, total, timestamp } = req.body;
         const saveDir = path.join(UPLOAD_DIR, timestamp);
         const safeFileName = file.replace(/[^a-z0-9.]/gi, '_');
         const outputPath = path.join(saveDir, safeFileName);
-
+    
         try {
             // 改用异步流式写入
             const writer = fs.createWriteStream(outputPath);
@@ -82,6 +82,15 @@ module.exports = function start(ip, port) {
                 await fs.promises.unlink(chunkPath);
             }
             writer.end();
+    
+            // 更新任务状态为已完成
+            const taskKey = `${timestamp}_${file}`;
+            const task = uploadTasks.get(taskKey);
+            if (task) {
+                task.status = 'completed';
+                task.filePath = outputPath; // 添加文件路径记录
+            }
+    
             res.json({ status: 'success', path: outputPath });
         } catch (err) {
             res.status(500).json({ error: '文件合并失败' });
