@@ -9,10 +9,11 @@ const UPLOAD_DIR = 'C://anytime';
 !fs.existsSync(UPLOAD_DIR) && fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 module.exports = function start(ip, port) {
-   console.log('开始启动后台服务')
-    const serverUrl = `http://${ip}`;
+    console.log('开始启动后台服务')
+    const serverUrl = `${ip}/mobile.html`;  // 修改此处添加移动端路径
 
-    
+    // 添加静态文件服务
+    app.use(express.static(__dirname));
     
     app.get('/qrcode', (req, res) => {
       QRCode.toDataURL(serverUrl, (err, url) => {
