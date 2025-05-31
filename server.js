@@ -8,6 +8,9 @@ const app = express();
 const UPLOAD_DIR = 'C://anytime';
 !fs.existsSync(UPLOAD_DIR) && fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
+// 在express初始化后添加body大小限制
+app.use(express.json({ limit: '5mb' })); // 调整JSON解析大小限制
+
 module.exports = function start(ip, port) {
     console.log('开始启动后台服务')
     const serverUrl = `${ip}/mobile.html`;  // 修改此处添加移动端路径
@@ -21,39 +24,49 @@ module.exports = function start(ip, port) {
       });
     });
 
-    // 新增分片上传接口
-    app.post('/upload', express.json(), (req, res) => {
-        const { file, chunk, index, total } = req.body;
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    // 修改分片上传接口
+    app.post('/upload', (req, res) => {
+        const { file, chunk, index, total, timestamp } = req.body; // 新增timestamp参数
+        console.log('文件开始上传', chunk, index, total, timestamp)
         const saveDir = path.join(UPLOAD_DIR, timestamp);
         
-        // 创建时间戳目录
-        !fs.existsSync(saveDir) && fs.mkdirSync(saveDir, { recursive: true });
+        // 创建目录时添加存在性检查
+        if (!fs.existsSync(saveDir)) {
+            fs.mkdirSync(saveDir, { recursive: true });
+        }
         
-        // 保存分片
-        const chunkPath = path.join(saveDir, `${file}-${index}`);
-        fs.writeFileSync(chunkPath, Buffer.from(chunk, 'base64'));
+        // 添加文件名安全处理
+        const safeFileName = file.replace(/[^a-z0-9.]/gi, '_');
+        const chunkPath = path.join(saveDir, `${safeFileName}-${index}`);
         
-        res.json({ status: index < total -1 ? 'continue' : 'complete' });
+        // 改用异步写入
+        fs.writeFile(chunkPath, Buffer.from(chunk, 'base64'), (err) => {
+            if (err) return res.status(500).json({ error: '分片保存失败' });
+            res.json({ status: index < total -1 ? 'continue' : 'complete' });
+        });
     });
 
-    // 新增合并接口
-    app.post('/merge', express.json(), (req, res) => {
-        const { file, total } = req.body;
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    // 修改合并接口
+    app.post('/merge', async (req, res) => {
+        const { file, total, timestamp } = req.body; // 新增timestamp参数
         const saveDir = path.join(UPLOAD_DIR, timestamp);
-        const outputPath = path.join(saveDir, file);
+        const safeFileName = file.replace(/[^a-z0-9.]/gi, '_');
+        const outputPath = path.join(saveDir, safeFileName);
 
-        // 合并分片
-        const writer = fs.createWriteStream(outputPath);
-        for (let i = 0; i < total; i++) {
-            const chunkPath = path.join(saveDir, `${file}-${i}`);
-            writer.write(fs.readFileSync(chunkPath));
-            fs.unlinkSync(chunkPath); // 删除分片
+        try {
+            // 改用异步流式写入
+            const writer = fs.createWriteStream(outputPath);
+            for (let i = 0; i < total; i++) {
+                const chunkPath = path.join(saveDir, `${safeFileName}-${i}`);
+                const data = await fs.promises.readFile(chunkPath);
+                writer.write(data);
+                await fs.promises.unlink(chunkPath);
+            }
+            writer.end();
+            res.json({ status: 'success', path: outputPath });
+        } catch (err) {
+            res.status(500).json({ error: '文件合并失败' });
         }
-        writer.end();
-        
-        res.json({ status: 'success', path: outputPath });
     });
   
     app.listen(port, () => {

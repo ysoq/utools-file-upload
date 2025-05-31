@@ -7,15 +7,139 @@
     <style>
         body {
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
-            height: 100vh;
-            margin: 0;
-            font-size: 2rem;
+            padding: 20px;
+        }
+        #progress {
+            width: 80%;
+            height: 20px;
+            margin: 20px 0;
+            background: #eee;
+        }
+        #progress-bar {
+            width: 0%;
+            height: 100%;
+            background: #4CAF50;
+            transition: width 0.3s ease;
         }
     </style>
 </head>
 <body>
-    Hello Mobile World!
+    <input type="file" id="fileInput" style="display: none;" onchange="handleFileSelect(event)">
+    <button onclick="document.getElementById('fileInput').click()">选择文件</button>
+    <div id="fileInfo" style="margin:15px 0; display:none;">
+        <div>文件名：<span id="fileName"></span></div>
+        <div>文件大小：<span id="fileSize"></span></div>
+        <div>分片数量：<span id="chunkCount"></span></div>
+    </div>
+    <button id="uploadBtn" style="display:none;" onclick="startUpload()">开始上传</button>
+    <div id="progress">
+        <div id="progress-bar"></div>
+    </div>
+    <div id="status"></div>
+
+    <script>
+        const CHUNK_SIZE = 200 * 1024; // 200KB分片
+        let currentFile = null;
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        async function handleFileSelect(event) {
+            currentFile = event.target.files[0];
+            const totalChunks = Math.ceil(currentFile.size / CHUNK_SIZE);
+            
+            // 显示文件信息
+            document.getElementById('fileInfo').style.display = 'block';
+            document.getElementById('fileName').textContent = currentFile.name;
+            document.getElementById('fileSize').textContent = formatFileSize(currentFile.size);
+            document.getElementById('chunkCount').textContent = totalChunks;
+            
+            // 显示上传按钮
+            document.getElementById('uploadBtn').style.display = 'inline-block';
+            document.getElementById('progress-bar').style.width = '0%';
+            document.getElementById('status').textContent = '等待上传...';
+        }
+
+        async function startUpload() {
+            const totalChunks = Math.ceil(currentFile.size / CHUNK_SIZE);
+            const timestamp = new Date().toLocaleString().replace(/[:./ ]/g, '-');
+            
+            document.getElementById('uploadBtn').disabled = true;
+            
+            // 分片上传逻辑（新增Promise数组）
+            const uploadPromises = [];
+            for (let i = 0; i < totalChunks; i++) {
+                const chunk = currentFile.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+                const reader = new FileReader();
+                
+                // 将每个分片上传包装成Promise
+                const promise = new Promise((resolve) => {
+                    reader.onload = async (e) => {
+                        const base64Chunk = e.target.result.split(',')[1];
+                        await uploadChunk({
+                            file: currentFile.name,
+                            chunk: base64Chunk,
+                            index: i,
+                            total: totalChunks,
+                            timestamp: timestamp
+                        });
+                        
+                        // 更新进度
+                        const progress = ((i + 1) / totalChunks * 100).toFixed(1);
+                        document.getElementById('progress-bar').style.width = `${progress}%`;
+                        resolve();
+                    };
+                });
+                
+                reader.readAsDataURL(chunk);
+                uploadPromises.push(promise);
+            }
+
+            // 等待所有分片上传完成（新增await）
+            await Promise.all(uploadPromises);
+            
+            // 所有分片上传完成后合并
+            await mergeFile(currentFile.name, totalChunks, timestamp);
+            document.getElementById('uploadBtn').disabled = false;
+        }
+
+        async function uploadChunk(data) {
+            const retry = async (attempt = 0) => {
+                try {
+                    const response = await fetch('/upload', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                    return await response.json();
+                } catch (e) {
+                    if (attempt < 3) return retry(attempt + 1);
+                    throw e;
+                }
+            };
+            return retry();
+        }
+
+        async function mergeFile(filename, total, timestamp) {
+            const response = await fetch('/merge', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    file: filename, 
+                    total: total,
+                    timestamp: timestamp 
+                })
+            });
+            
+            const result = await response.json();
+            document.getElementById('status').textContent = 
+                `上传完成！保存路径：${result.path}`;
+        }
+    </script>
 </body>
 </html>
