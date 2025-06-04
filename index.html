@@ -4,46 +4,124 @@
 <head>
     <meta charset="UTF-8">
     <style>
+        :root {
+            --primary-color: #2196F3;
+            --secondary-color: #64B5F6;
+            --background: #f8f9fa;
+            --card-bg: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 2rem;
+        }
+
         .container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 2rem;
         }
 
         .input-group {
-            margin-bottom: 20px;
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
         }
 
-        input,
+        input {
+            flex: 1;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            display: 0 10xpx;
+        }
+
+        input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 8px rgba(33,150,243,0.2);
+            outline: none;
+        }
+
         button {
-            padding: 8px 12px;
-            margin: 0 5px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0.8rem 1.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        button:hover {
+            background: var(--secondary-color);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
 
         .upload-list {
-            margin-top: 20px;
-            width: 80%;
-            border: 1px solid #ddd;
-            padding: 15px;
-            display: none;
+            margin-top: 2rem;
+            border-radius: 8px;
+            border: 1px solid rgba(0,0,0,0.1);
+            background: var(--card-bg);
+            padding: 1.5rem;
         }
 
         .task-item {
-            padding: 10px;
-            margin: 5px 0;
-            background: #f5f5f5;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 8px;
+            background: var(--background);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: grid;
+            gap: 10px;
         }
 
         .progress-bar {
-            height: 10px;
+            height: 15px;
             background: #e0e0e0;
-            margin: 5px 0;
+            border-radius: 4px;
+            overflow: hidden;
         }
 
         .progress {
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            transition: width 0.5s ease-in-out;
             height: 100%;
-            background: #4CAF50;
-            transition: width 0.3s ease;
+        }
+
+        h3 {
+            color: #2d3436;
+            margin-top: 0;
+            margin-bottom: 1.5rem;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        
+        .folder-link {
+            color: var(--primary-color);
+            cursor: pointer;
+            text-decoration: underline;
+            transition: color 0.2s ease;
+        }
+
+        .folder-link:hover {
+            color: #1565C0;
+            text-decoration: none;
+        }
+
+        #qrcode {
+            text-align: center;
         }
     </style>
 </head>
@@ -78,29 +156,60 @@
 
         function checkTaskList() {
             const port = document.getElementById('port').value;
-            console.log('1 checkTaskList')
-            // 新增定时刷新任务列表
-            setInterval(() => {
-                fetch(`http://127.0.0.1:${port}/tasks`)
-                    .then(res => res.json())
-                    .then(tasks => {
-                        console.log('2 checkTaskList', tasks)
+            let refreshInterval;
+            
+            // 清除已有定时器避免重复
+            if (window.taskRefreshTimer) {
+                clearInterval(window.taskRefreshTimer);
+            }
 
+            window.taskRefreshTimer = setInterval(async () => {
+                try {
+                    const response = await fetch(`http://127.0.0.1:${port}/tasks`);
+                    if (!response.ok) throw new Error('请求失败');
+                    
+                    const tasks = await response.json();
+                    console.log('获取到的任务数据:', tasks);
 
-                        const container = document.getElementById('taskList');
-                        container.innerHTML = tasks.map(task => `
-                            <div class="task-item">
-                                <div>${task.fileName}</div>
-                                <div>保存目录：${task.filePath || ''}</div>
-                                <div>进度：${task.uploadedChunks}/${task.totalChunks}</div>
-                                <div class="progress-bar">
-                                    <div class="progress" style="width: ${(task.uploadedChunks / task.totalChunks * 100).toFixed(1)}%"></div>
-                                </div>
-                                ${task.status === 'completed' ?
-                                `<button onclick="openFolder('${task.filePath}')">打开文件夹</button>` : ''}
+                    const container = document.getElementById('taskList');
+                    container.innerHTML = ''; // 清空容器
+                    
+                    tasks.forEach(task => {
+                        const taskItem = document.createElement('div');
+                        taskItem.className = 'task-item';
+                        
+                        // 进度计算安全处理
+                        const progress = task.totalChunks > 0 
+                            ? (task.uploadedChunks / task.totalChunks * 100).toFixed(1)
+                            : 0;
+
+                        taskItem.innerHTML = `
+                            <div>${task.fileName}</div>
+                            <div>保存目录：<span class="folder-link" 
+                                onclick='openFolder(${JSON.stringify(task.filePath)})' 
+                                title="点击打开文件夹">${task.filePath || '默认目录'}</span></div>
+                            <div>进度：${task.uploadedChunks}/${task.totalChunks}</div>
+                            <div class="progress-bar">
+                                <div class="progress" style="width: ${progress}%"></div>
                             </div>
-                        `).join('');
+                        `;
+
+                        container.appendChild(taskItem);
+                        
+                        // 强制重绘进度条
+                        const progressBar = taskItem.querySelector('.progress');
+                        void progressBar.offsetWidth;
                     });
+
+                    // 显示上传列表（如果有任务）
+                    document.querySelector('.upload-list').style.display = tasks.length ? 'block' : 'none';
+
+                } catch (error) {
+                    console.error('任务获取失败:', error);
+                    // 添加错误提示
+                    const container = document.getElementById('taskList');
+                    container.innerHTML = `<div class="task-item error">任务加载失败，请检查服务状态</div>`;
+                }
             }, 1000);
         }
 
@@ -132,34 +241,7 @@
             window.ysok.openFolder(safePath);
         }
 
-        // 在任务列表展示中修改路径显示
-        function checkTaskList() {
-            const port = document.getElementById('port').value;
-            console.log('1 checkTaskList')
-            // 新增定时刷新任务列表
-            setInterval(() => {
-                fetch(`http://127.0.0.1:${port}/tasks`)
-                    .then(res => res.json())
-                    .then(tasks => {
-                        console.log('2 checkTaskList', tasks)
 
-
-                        const container = document.getElementById('taskList');
-                        container.innerHTML = tasks.map(task => `
-                            <div class="task-item">
-                                <div>${task.fileName}</div>
-                                <div>保存目录：${task.filePath || ''}</div>
-                                <div>进度：${task.uploadedChunks}/${task.totalChunks}</div>
-                                <div class="progress-bar">
-                                    <div class="progress" style="width: ${(task.uploadedChunks / task.totalChunks * 100).toFixed(1)}%"></div>
-                                </div>
-                                ${task.status === 'completed' ? 
-                                `<button onclick='openFolder(${JSON.stringify(task.filePath)})'>打开文件夹</button>` : ''}
-                            </div>
-                        `).join('');
-                    });
-            }, 1000);
-        }
     </script>
 
 <script src="./vconsole.min.js"></script>

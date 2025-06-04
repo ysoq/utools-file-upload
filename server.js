@@ -5,7 +5,7 @@ const path = require('path');
 const app = express();
 
 // 创建上传目录
-const UPLOAD_DIR = 'C://anytime';
+const UPLOAD_DIR = 'C://anytime//upload';
 !fs.existsSync(UPLOAD_DIR) && fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 // 在express初始化后添加body大小限制
