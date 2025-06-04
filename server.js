@@ -11,7 +11,7 @@ const UPLOAD_DIR = 'C://anytime//upload';
 // 在express初始化后添加body大小限制
 app.use(express.json({ limit: '5mb' })); // 调整JSON解析大小限制
 
-module.exports = function start(ip, port) {
+module.exports = function start(ip, port, maxSize) {
     console.log('开始启动后台服务')
     const serverUrl = `${ip}/mobile.html`;  // 修改此处添加移动端路径
 
@@ -23,6 +23,10 @@ module.exports = function start(ip, port) {
         res.send(`<img src="${url}" style="width:200px;height:200px">`);
       });
     });
+
+    app.get('/maxSize', (req,res) => {
+        res.json({ maxSize: maxSize });
+    })
 
     // 修改分片上传接口
     // 新增上传任务存储对象

@@ -138,6 +138,13 @@
         <div class="input-group">
             <input class="start-disabled" type="text" id="ip" placeholder="IP地址" value="http://file.ipx.akeem.cn">
             <input class="start-disabled" type="number" id="port" placeholder="端口号" value="7738">
+            <select class="start-disabled" id="chunkSizeSelect">
+                <option value="200">200 KB</option>
+                <option value="500">500 KB</option>
+                <option value="1024">1 MB</option>
+                <option value="2048">2 MB</option>
+                <option value="5120">5 MB</option>
+            </select>
             <button class="start-disabled" id="startBtn" onclick="startServer()">启动服务</button>
         </div>
         <div id="qrcode"></div>
@@ -154,16 +161,19 @@
         document.addEventListener('DOMContentLoaded', () => {
             const config = window.utools.dbStorage.getItem('serverConfig') || {
                 ip: 'http://localhost',
-                port: 7738
+                port: 7738,
+                chunkSize: '500' // 默认分片大小
             };
             document.getElementById('ip').value = config.ip;
             document.getElementById('port').value = config.port;
+            document.getElementById('chunkSizeSelect').value = config.chunkSize;
         });
 
         function startServer() {
             const config = {
                 ip: document.getElementById('ip').value,
-                port: document.getElementById('port').value
+                port: document.getElementById('port').value,
+                chunkSize: document.getElementById('chunkSizeSelect').value // 获取分片大小
             };
 
             // 保存配置到uTools数据库
@@ -172,10 +182,10 @@
             // 启动服务时禁用按钮
             [...document.getElementsByClassName('start-disabled')].forEach(el => el.disabled = true);
 
-            window.ysok.server(config.ip, config.port);
+            window.ysok.server(config.ip, config.port, config.chunkSize);
             document.getElementById('qrcode').innerHTML = '';
             retryCount = 0;
-            checkServiceReady(config.ip, config.port);
+            checkServiceReady(config.ip, config.port, );
         }
 
         function checkTaskList() {

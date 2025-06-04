@@ -91,17 +91,33 @@
         <div>文件名：<span id="fileName"></span></div>
         <div>文件大小：<span id="fileSize"></span></div>
         <div>分片数量：<span id="chunkCount"></span></div>
+        <div>分片大小：<span id="chunkSize"></span></div>
     </div>
-    <button id="uploadBtn" onclick="startUpload()" >开始上传</button>
+    <button id="uploadBtn" onclick="startUpload()">开始上传</button>
     <div id="progress">
         <div id="progress-bar"></div>
     </div>
     <div id="status"></div>
 
     <script>
-        const CHUNK_SIZE = 200 * 1024; // 200KB分片
+        let CHUNK_SIZE = 200 * 1024; // 200KB分片
         const MAX_CONCURRENT_UPLOADS = 3; // 最大并发上传数
         let currentFile = null;
+
+        async function fetchMaxSize() {
+            try {
+                const response = await fetch('/maxSize');
+                const data = await response.json();
+                // 将KB转换为Bytes
+                CHUNK_SIZE = data.maxSize * 1024;
+                console.log('CHUNK_SIZE updated:', CHUNK_SIZE);
+                document.getElementById('chunkSize').textContent = formatFileSize(CHUNK_SIZE);
+            } catch (error) {
+                console.error('Failed to fetch maxSize:', error);
+            }
+        }
+
+        fetchMaxSize();
 
         function formatFileSize(bytes) {
             if (bytes < 1024) return bytes + ' B';
