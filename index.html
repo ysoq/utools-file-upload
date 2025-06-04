@@ -164,9 +164,13 @@
 
 <script src="./vconsole.min.js"></script>
 <script>
-  // VConsole will be exported to `window.VConsole` by default.
-  var vConsole = new window.VConsole();
+  // 根据入口类型初始化调试工具
+  window.utools.onPluginEnter((action) => {
+    console.log(action.code)
+    if( action.code === 'debug-file-transfer' ){
+      var vConsole = new window.VConsole();
+    }
+  })
 </script>
 </body>
-
 </html>

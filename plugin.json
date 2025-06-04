@@ -6,7 +6,12 @@
     {
       "code": "file-transfer",
       "explain": "文件传输服务",
-      "cmds": ["文件传输", "send files"]
+      "cmds": ["文件传输"]
+    },
+    {
+      "code": "debug-file-transfer",
+      "explain": "调试模式文件传输",
+      "cmds": ["文件传输调试模式"]
     }
   ]
 }
