@@ -40,7 +40,7 @@
             border-radius: 8px;
             font-size: 1rem;
             transition: all 0.3s ease;
-            display: 0 10xpx;
+            padding: 0 10px;
         }
 
         input:focus {
@@ -82,8 +82,9 @@
             border-radius: 8px;
             background: var(--background);
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            display: grid;
-            gap: 10px;
+            display: flex; /* 将 task-item 设为 Flex 容器 */
+            flex-direction: column; /* 垂直排列子元素 */
+            gap: 10px; /* 增加元素之间的间距 */
         }
 
         .progress-bar {
@@ -122,6 +123,7 @@
 
         #qrcode {
             text-align: center;
+            margin-top: 1rem; /* 增加二维码上方的间距 */
         }
     </style>
 </head>
