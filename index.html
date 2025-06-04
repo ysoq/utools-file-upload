@@ -62,6 +62,11 @@
             letter-spacing: 0.5px;
         }
 
+        button[disabled] {
+            background: #e0e0e0;
+            cursor: not-allowed;
+        }
+
         button:hover {
             background: var(--secondary-color);
             transform: translateY(-1px);
@@ -145,15 +150,32 @@
     <script>
         let retryCount = 0;
 
-        function startServer() {
-            const ip = document.getElementById('ip').value;
-            const port = document.getElementById('port').value;
-            window.ysok.server(ip, port);
+        // 初始化配置
+        document.addEventListener('DOMContentLoaded', () => {
+            const config = window.utools.dbStorage.getItem('serverConfig') || {
+                ip: 'http://localhost',
+                port: 7738
+            };
+            document.getElementById('ip').value = config.ip;
+            document.getElementById('port').value = config.port;
+        });
 
-            // 清空二维码并开始检测
+        function startServer() {
+            const config = {
+                ip: document.getElementById('ip').value,
+                port: document.getElementById('port').value
+            };
+
+            // 保存配置到uTools数据库
+            window.utools.dbStorage.setItem('serverConfig', config);
+            
+            // 启动服务时禁用按钮
+            [...document.getElementsByClassName('start-disabled')].forEach(el => el.disabled = true);
+
+            window.ysok.server(config.ip, config.port);
             document.getElementById('qrcode').innerHTML = '';
             retryCount = 0;
-            checkServiceReady(ip, port);
+            checkServiceReady(config.ip, config.port);
         }
 
         function checkTaskList() {

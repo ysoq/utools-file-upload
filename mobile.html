@@ -100,6 +100,7 @@
 
     <script>
         const CHUNK_SIZE = 200 * 1024; // 200KB分片
+        const MAX_CONCURRENT_UPLOADS = 3; // 最大并发上传数
         let currentFile = null;
 
         function formatFileSize(bytes) {
@@ -127,61 +128,81 @@
         async function startUpload() {
             const totalChunks = Math.ceil(currentFile.size / CHUNK_SIZE);
             const timestamp = new Date().toLocaleString().replace(/[:./ ]/g, '-');
-            let uploadedCount = 0; // 新增上传完成计数器
+            let uploadedCount = 0;
+            let uploading = 0; // 当前上传中的分片数量
 
             document.getElementById('uploadBtn').disabled = true;
 
-            const uploadPromises = [];
-            for (let i = 0; i < totalChunks; i++) {
-                const chunk = currentFile.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+            async function uploadChunk(index) {
+                if (index >= totalChunks) {
+                    return; // 所有分片已上传
+                }
+
+                uploading++;
+                const chunk = currentFile.slice(index * CHUNK_SIZE, (index + 1) * CHUNK_SIZE);
                 const reader = new FileReader();
 
-                const promise = new Promise((resolve) => {
+                return new Promise((resolve, reject) => {
                     reader.onload = async (e) => {
                         const base64Chunk = e.target.result.split(',')[1];
-                        await uploadChunk({
-                            file: currentFile.name,
-                            chunk: base64Chunk,
-                            index: i,
-                            total: totalChunks,
-                            timestamp: timestamp
-                        });
+                        try {
+                            await uploadChunkData({
+                                file: currentFile.name,
+                                chunk: base64Chunk,
+                                index: index,
+                                total: totalChunks,
+                                timestamp: timestamp
+                            });
 
-                        // 更新进度逻辑改为计数器方式
-                        uploadedCount++;
-                        const progress = (uploadedCount / totalChunks * 100).toFixed(1);
-                        document.getElementById('progress-bar').style.width = `${progress}%`;
-                        resolve();
+                            uploadedCount++;
+                            const progress = (uploadedCount / totalChunks * 100).toFixed(1);
+                            document.getElementById('progress-bar').style.width = `${progress}%`;
+                            resolve(); // 上传完成resolve
+                        } catch (error) {
+                            console.error('分片上传失败:', error);
+                            reject(error); // 上传失败reject
+                        } finally {
+                            uploading--;
+                            if (uploadedCount === totalChunks) {
+                                await mergeFile(currentFile.name, totalChunks, timestamp);
+                                document.getElementById('progress-bar').style.width = `${100}%`;
+                                document.getElementById('uploadBtn').disabled = false;
+                            }
+
+                            // 递归调用上传下一个分片
+                            if (uploading < MAX_CONCURRENT_UPLOADS) {
+                                uploadChunk(uploadedCount);
+                            }
+                        }
                     };
+                    reader.onerror = reject; // 读取失败 reject promise
+                    reader.readAsDataURL(chunk);
                 });
-
-                reader.readAsDataURL(chunk);
-                uploadPromises.push(promise);
+            }
+            
+            async function uploadChunkData(data) {
+                 const retry = async (attempt = 0) => {
+                    try {
+                        const response = await fetch('/upload', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(data)
+                        });
+                        return await response.json();
+                    } catch (e) {
+                        if (attempt < 3) return retry(attempt + 1);
+                        throw e;
+                    }
+                };
+                return retry();
             }
 
-            await Promise.all(uploadPromises);
-            await mergeFile(currentFile.name, totalChunks, timestamp);
-            document.getElementById('progress-bar').style.width = `${100}%`;
-            document.getElementById('uploadBtn').disabled = false;
-        }
-
-        async function uploadChunk(data) {
-            const retry = async (attempt = 0) => {
-                try {
-                    const response = await fetch('/upload', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(data)
-                    });
-                    return await response.json();
-                } catch (e) {
-                    if (attempt < 3) return retry(attempt + 1);
-                    throw e;
-                }
-            };
-            return retry();
+            // 初始启动并发上传
+            for (let i = 0; i < Math.min(MAX_CONCURRENT_UPLOADS, totalChunks); i++) {
+                uploadChunk(i);
+            }
         }
 
         async function mergeFile(filename, total, timestamp) {
