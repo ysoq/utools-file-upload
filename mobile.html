@@ -1,39 +1,98 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>手机端传输</title>
     <style>
         body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
             padding: 20px;
+            background-color: #f4f7f6;
+            color: #333;
         }
+
+        button {
+            padding: 12px 24px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 8px;
+            background-color: #007bff;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        #fileInfo {
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 8px;
+            background-color: #fff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            display: none;
+            width: 80%;
+            text-align: left;
+        }
+
+        #fileInfo div {
+            margin: 8px 0;
+        }
+
         #progress {
             width: 80%;
-            height: 20px;
+            height: 25px;
             margin: 20px 0;
-            background: #eee;
+            background: #e2e9f0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
         }
+
         #progress-bar {
             width: 0%;
             height: 100%;
-            background: #4CAF50;
-            transition: width 0.3s ease;
+            background: #5cb85c;
+            transition: width 0.4s ease;
+        }
+
+        #status {
+            margin-top: 20px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        #uploadBtn {
+            display: none;
         }
     </style>
 </head>
+
 <body>
-    <input type="file" id="fileInput" style="display: none;" onchange="handleFileSelect(event)">
+    <input type="file" id="fileInput" onchange="handleFileSelect(event)">
     <button onclick="document.getElementById('fileInput').click()">选择文件</button>
-    <div id="fileInfo" style="margin:15px 0; display:none;">
+    <div id="fileInfo">
         <div>文件名：<span id="fileName"></span></div>
         <div>文件大小：<span id="fileSize"></span></div>
         <div>分片数量：<span id="chunkCount"></span></div>
     </div>
-    <button id="uploadBtn" style="display:none;" onclick="startUpload()">开始上传</button>
+    <button id="uploadBtn" onclick="startUpload()" >开始上传</button>
     <div id="progress">
         <div id="progress-bar"></div>
     </div>
@@ -52,15 +111,15 @@
         async function handleFileSelect(event) {
             currentFile = event.target.files[0];
             const totalChunks = Math.ceil(currentFile.size / CHUNK_SIZE);
-            
+
             // 显示文件信息
             document.getElementById('fileInfo').style.display = 'block';
+            document.getElementById('uploadBtn').style.display = 'block';
             document.getElementById('fileName').textContent = currentFile.name;
             document.getElementById('fileSize').textContent = formatFileSize(currentFile.size);
             document.getElementById('chunkCount').textContent = totalChunks;
-            
+
             // 显示上传按钮
-            document.getElementById('uploadBtn').style.display = 'inline-block';
             document.getElementById('progress-bar').style.width = '0%';
             document.getElementById('status').textContent = '等待上传...';
         }
@@ -69,14 +128,14 @@
             const totalChunks = Math.ceil(currentFile.size / CHUNK_SIZE);
             const timestamp = new Date().toLocaleString().replace(/[:./ ]/g, '-');
             let uploadedCount = 0; // 新增上传完成计数器
-            
+
             document.getElementById('uploadBtn').disabled = true;
-            
+
             const uploadPromises = [];
             for (let i = 0; i < totalChunks; i++) {
                 const chunk = currentFile.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
                 const reader = new FileReader();
-                
+
                 const promise = new Promise((resolve) => {
                     reader.onload = async (e) => {
                         const base64Chunk = e.target.result.split(',')[1];
@@ -87,7 +146,7 @@
                             total: totalChunks,
                             timestamp: timestamp
                         });
-                        
+
                         // 更新进度逻辑改为计数器方式
                         uploadedCount++;
                         const progress = (uploadedCount / totalChunks * 100).toFixed(1);
@@ -95,7 +154,7 @@
                         resolve();
                     };
                 });
-                
+
                 reader.readAsDataURL(chunk);
                 uploadPromises.push(promise);
             }
@@ -111,7 +170,9 @@
                 try {
                     const response = await fetch('/upload', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
                         body: JSON.stringify(data)
                     });
                     return await response.json();
@@ -126,16 +187,18 @@
         async function mergeFile(filename, total, timestamp) {
             const response = await fetch('/merge', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    file: filename, 
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    file: filename,
                     total: total,
-                    timestamp: timestamp 
+                    timestamp: timestamp
                 })
             });
-            
+
             const result = await response.json();
-            document.getElementById('status').textContent = 
+            document.getElementById('status').textContent =
                 `上传完成！保存路径：${result.path}`;
 
             // 新增状态重置逻辑
@@ -147,4 +210,5 @@
         }
     </script>
 </body>
+
 </html>
